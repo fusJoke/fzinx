@@ -1,0 +1,55 @@
+package znet
+
+import (
+	"bytes"
+	"encoding/binary"
+	"errors"
+	"zinx/utils"
+	"zinx/ziface"
+)
+
+type DataPack struct {}
+
+
+func NewDataPack() *DataPack {
+	return &DataPack{}
+}
+
+
+func (dp *DataPack) GetHeadLen() uint32 {
+	return 8
+}
+func (dp *DataPack) Pack(msg ziface.IMessage) ([]byte, error){
+	dataBuff := bytes.NewBuffer([]byte{})
+	if err := binary.Write(dataBuff, binary.LittleEndian, msg.GetMsgLen()); err != nil {
+		return nil, err
+	}
+
+	if err := binary.Write(dataBuff, binary.LittleEndian, msg.GetMsgId()); err != nil {
+		return nil, err
+	}
+
+	if err := binary.Write(dataBuff, binary.LittleEndian, msg.GetData()); err != nil {
+		return nil, err
+	}
+	return dataBuff.Bytes(), nil
+}
+
+func (dp *DataPack) Unpack(binaryDate []byte) (ziface.IMessage, error) {
+	databuf := bytes.NewBuffer(binaryDate)
+	msg := &Message{}
+
+	if err := binary.Read(databuf, binary.LittleEndian, &msg.DataLen); err != nil {
+		return nil, err
+	}
+
+	if err := binary.Read(databuf, binary.LittleEndian, &msg.Id ); err != nil {
+		return nil, err
+	}
+
+	if utils.GlobalObject.MaxSizePageSize > 0 && msg.DataLen > utils.GlobalObject.MaxSizePageSize {
+		return nil, errors.New("msg too long to recv")
+	}
+
+	return msg, nil
+}
